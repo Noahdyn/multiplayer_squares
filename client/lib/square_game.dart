@@ -39,8 +39,8 @@ class SquareGame extends FlameGame with HasKeyboardHandlerComponents {
 
   Future<void> _joinServer() async {
     final random = Random();
-    final x = random.nextDouble() * 800 - 400; // -400 to 400
-    final y = random.nextDouble() * 600 - 300; // -300 to 300
+    final x = random.nextDouble() * 800 - 400;
+    final y = random.nextDouble() * 600 - 300;
     player = PlayerComponent(id: playerId, position: Vector2(x, y));
     add(player);
     world.add(PlayerComponent(id: playerId, position: Vector2(x, y)));
@@ -69,13 +69,11 @@ class SquareGame extends FlameGame with HasKeyboardHandlerComponents {
   @override
   KeyEventResult onKeyEvent(
       KeyEvent event, Set<LogicalKeyboardKey> keysPressed) {
-    // Only process events on key down to avoid multiple triggers
     if (event is KeyDownEvent) {
       final Vector2 movement = Vector2.zero();
 
       switch (event.logicalKey.keyLabel) {
         case 'W':
-          print("w");
           player.position.y -= moveSpeed;
           _sendPositionUpdate();
           return KeyEventResult.handled;
@@ -93,11 +91,9 @@ class SquareGame extends FlameGame with HasKeyboardHandlerComponents {
           return KeyEventResult.handled;
         default:
       }
-      // If there's movement, update player position and send to server
       if (movement != Vector2.zero()) {
         player.position.add(movement);
 
-        // Send position update to server
         final message = {
           'type': 'MOVE',
           'data': {
@@ -151,11 +147,13 @@ class SquareGame extends FlameGame with HasKeyboardHandlerComponents {
   void _updateGameState(List<Map<String, dynamic>> playerList) {
     for (final playerData in playerList) {
       final id = playerData['id'] as String;
-      print(id);
       final x = playerData['x'] as double;
       final y = playerData['y'] as double;
+
       if (id == playerId) continue;
+
       final existingPlayer = otherPlayers.where((p) => p.id == id).firstOrNull;
+
       if (existingPlayer != null) {
         existingPlayer.position = Vector2(x, y);
       } else {
@@ -163,6 +161,7 @@ class SquareGame extends FlameGame with HasKeyboardHandlerComponents {
           id: id,
           position: Vector2(x, y),
         );
+
         otherPlayers.add(newPlayer);
         add(newPlayer);
       }

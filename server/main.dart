@@ -16,28 +16,23 @@ class GameServer {
   final Map<String, InternetAddress> clientAddresses = {};
   final Map<String, int> clientPorts = {};
 
+  final address = InternetAddress("127.0.0.1");
+  final port = 16123;
   late RawDatagramSocket socket;
 
   Timer? updateTimer;
 
-  // Start the server
   Future<void> start() async {
-    // Bind to UDP socket
-    var address = InternetAddress("127.0.0.1");
-    int port = 16123;
-
     try {
       socket = await RawDatagramSocket.bind(address, port);
       print('Game server started on ${address.address}:$port');
 
-      // Set up socket event handling
       socket.listen((RawSocketEvent event) {
         if (event == RawSocketEvent.read) {
           handleIncomingPacket();
         }
       });
 
-      // Start periodic game state updates (10 times per second)
       updateTimer = Timer.periodic(Duration(milliseconds: 100), (_) {
         broadcastGameState();
       });
@@ -46,7 +41,6 @@ class GameServer {
     }
   }
 
-  // Handle incoming UDP packets
   void handleIncomingPacket() {
     final datagram = socket.receive();
     if (datagram == null) return;
@@ -56,8 +50,6 @@ class GameServer {
       final message = GameMessage.fromJson(messageString);
 
       if (message == null) return;
-
-      // Process message based on type
       switch (message.type) {
         case MessageType.JOIN:
           handleJoinMessage(message.data, datagram.address, datagram.port);
@@ -72,7 +64,6 @@ class GameServer {
     }
   }
 
-  // Handle JOIN message
   void handleJoinMessage(
     Map<String, dynamic> data,
     InternetAddress address,
@@ -85,11 +76,9 @@ class GameServer {
       return;
     }
 
-    // Store client address for future communication
     clientAddresses[playerId] = address;
     clientPorts[playerId] = port;
 
-    // Add player to game state with initial position
     final x = data['x']?.toDouble() ?? 0.0;
     final y = data['y']?.toDouble() ?? 0.0;
     gameState.updatePlayer(playerId, x, y);
@@ -97,7 +86,6 @@ class GameServer {
     print('Player $playerId joined the game');
   }
 
-  // Handle MOVE message
   void handleMoveMessage(Map<String, dynamic> data) {
     final playerId = data['id'];
     final x = data['x']?.toDouble();
@@ -108,11 +96,9 @@ class GameServer {
       return;
     }
 
-    // Update player position
     gameState.updatePlayer(playerId, x, y);
   }
 
-  // Handle LEAVE message
   void handleLeaveMessage(Map<String, dynamic> data) {
     final playerId = data['id'];
 
@@ -121,26 +107,20 @@ class GameServer {
       return;
     }
 
-    // Remove player from game state
     gameState.removePlayer(playerId);
     clientAddresses.remove(playerId);
     clientPorts.remove(playerId);
 
     print('Player $playerId left the game');
-    print("adding player");
   }
 
-  // Broadcast game state to all connected clients
   void broadcastGameState() {
-    // Don't send updates if no players
     if (clientAddresses.isEmpty) return;
 
-    // Create STATE message with current game state
     final stateMessage = GameMessage(MessageType.STATE, gameState.toJson());
 
     final encodedMessage = utf8.encode(stateMessage.toJson());
 
-    // Send to all connected clients
     for (final entry in clientAddresses.entries) {
       final playerId = entry.key;
       final address = entry.value;
@@ -150,12 +130,5 @@ class GameServer {
         socket.send(encodedMessage, address, port);
       }
     }
-  }
-
-  // Stop the server
-  void stop() {
-    updateTimer?.cancel();
-    socket.close();
-    print('Game server stopped');
   }
 }
